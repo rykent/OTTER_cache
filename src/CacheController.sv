@@ -36,15 +36,17 @@ module CacheController(
     input lru_valid,
     input lru_dirty,
     input cl_busy,
-    output update_lru,
-    output update_tag,
-    output mem_valid,
-    output set_dirty,
-    output clear_dirty,
-    output set_valid,
-    output clear_valid,
-    output cl_read,
-    output cl_write
+    input addr_valid,
+    output logic update_lru,
+    output logic update_tag,
+    output logic update_cacheline,
+    output logic mem_valid,
+    output logic set_dirty,
+    output logic clear_dirty,
+    output logic set_valid,
+    output logic clear_valid,
+    output logic cl_read,
+    output logic cl_write
     );
 
     typedef enum {IDLE, HIT_CHECK, MISS, MEM_READ, REFILL} state;
@@ -62,6 +64,7 @@ module CacheController(
     always_comb begin
         update_lru = 0;
         update_tag = 0;
+        update_cacheline = 0;
         mem_valid = 0;
         set_dirty = 0;
         clear_dirty = 0;
@@ -72,7 +75,8 @@ module CacheController(
         case (ps)
             IDLE: begin
                 //Wait for mem read or mem write (constantly reading the tag/index arrays checking for hits)
-                if (read | write) begin
+                //Check that address is within a valid range (not above 0x10000)
+                if ((mem_read | mem_write) & addr_valid) begin
                     ns = HIT_CHECK;
                 end
                 else begin
@@ -115,6 +119,7 @@ module CacheController(
                 end
             end
             MEM_READ: begin
+                //Wait for CL Adapter to finish writing before starting the read
                 if (cl_busy) begin
                     ns = MEM_READ;
                 end
@@ -124,6 +129,7 @@ module CacheController(
                 end
             end
             REFILL: begin
+                //Wait for CL Adapter to finish reading before writing new data to cache
                 if (cl_busy) begin
                     ns = REFILL;
                 end
@@ -131,6 +137,7 @@ module CacheController(
                     update_tag = 1'b1;
                     set_valid = 1'b1;
                     clear_dirty = 1'b1;
+                    update_cacheline = 1'b1;
                     ns = HIT_CHECK;
                 end
             end
