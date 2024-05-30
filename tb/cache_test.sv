@@ -69,7 +69,7 @@ module cache_tb ();
         data = MEM_DOUT2;
     endtask : load
 
-
+    //Task to test a store/load pair with random data and random addr
     task test_pair_rand(input [1:0] size, input sign, output success);
         logic [31:0] test_data_i;
         logic [31:0] test_data_o; 
@@ -77,15 +77,17 @@ module cache_tb ();
 
         case (size) 
             0: begin // Byte Test
-                test_data_i = $urandom_range(32'h0, 32'hFF);
-                test_addr = $urandom_range(32'h0, 32'hFFFF) & ~32'h3; // Get random address
+                if (sign) test_data_i = $urandom_range(32'h0, 32'hFF);
+                else test_data_i = $signed($urandom_range(-128, 127));
+                test_addr = $urandom_range(32'h0, 32'hFFFF); // Get random address
             end
             1: begin // Half Test
-                test_data_i = $urandom_range(32'h0, 32'hFFFF);
+                if (sign) test_data_i = $urandom_range(32'h0, 32'hFFFF);
+                else test_data_i = $signed($urandom_range(-32768, 32767));
                 test_addr = $urandom_range(32'h0, 32'hFFFF) & ~32'h1; // Get random Half aligned address
             end
             2: begin // Word Test
-                test_data_i = $urandom_range(32'h0, 32'hFFFFFFFF);
+                test_data_i = $urandom();
                 test_addr = $urandom_range(32'h0, 32'hFFFF) & ~32'h3; // Get random Word aligned address
             end
             default: begin
@@ -94,7 +96,7 @@ module cache_tb ();
             end
         endcase
 
-        $display(test_data_i);
+        //$display(test_data_i);
 
         store(test_addr, test_data_i, size);
         @(posedge MEM_CLK);
@@ -102,7 +104,21 @@ module cache_tb ();
 
         if (sign) success = (test_data_o == test_data_i) ? 1 : 0;
         else success = (test_data_o == $signed(test_data_i)) ? 1 : 0;
+        @(posedge MEM_CLK);
     endtask : test_pair_rand
+
+    // Task to test MEM Read misses
+    task test_read_miss();
+        logic [31:0] test_data_orig;
+        logic [31:0] orig_addr;
+        logic [31:0] test_data_out;
+
+        test_data_orig = $urandom();
+        orig_addr = $urandom_range(32'h0, 32'hFFFF) & ~32'h3;
+
+        store()
+
+    endtask : test_read_miss
 
     logic suc;
 
@@ -113,8 +129,10 @@ module cache_tb ();
 
         @(posedge MEM_CLK);
 
+        //Test random Numbers Store/Load Pairs
 
-        for (int i = 0; i < 10; i++) begin
+        $display("TESTING WORDS");
+        for (int i = 0; i < 100; i++) begin
             test_pair_rand(2, 1, suc);
             if (~suc) begin
                 $display("ERROR TESTING WORDS");
@@ -122,7 +140,8 @@ module cache_tb ();
             end
         end
 
-        for (int i = 0; i < 10; i++) begin
+        $display("TESTING UNSIGNED HALFS");
+        for (int i = 0; i < 100; i++) begin
             test_pair_rand(1, 1, suc);
             if (~suc) begin
                 $display("ERROR TESTING UNSIGNED HALFS");
@@ -130,7 +149,17 @@ module cache_tb ();
             end
         end
 
-        for (int i = 0; i < 10; i++) begin
+        $display("TESTING SIGNED HALFS");
+        for (int i = 0; i < 100; i++) begin
+            test_pair_rand(1, 0, suc);
+            if (~suc) begin
+                $display("ERROR TESTING SIGNED HALFS");
+                $finish;
+            end
+        end
+
+        $display("TESTING UNSIGNED BYTES");
+        for (int i = 0; i < 100; i++) begin
             test_pair_rand(0, 1, suc);
             if (~suc) begin
                 $display("ERROR TESTING UNSIGNED BYTES");
@@ -138,8 +167,18 @@ module cache_tb ();
             end
         end
 
+        $display("TESTING SIGNED BYTES");
+        for (int i = 0; i < 100; i++) begin
+            test_pair_rand(0, 0, suc);
+            if (~suc) begin
+                $display("ERROR TESTING SIGNED BYTES");
+                $finish;
+            end
+        end
+
+
         $display("ALL TESTS PASSED, WOOOOOOO!!!!");
-         
+            
     end
 
 	OtterMemory DUT (.*);

@@ -74,7 +74,7 @@ module cache (
 			lru[6] <= 0;
 			lru[7] <= 0;
 		end else if (update_lru) begin
-			lru[index] <= w2_hit;
+			lru[index] <= w1_hit;
 		end
 	end
 
