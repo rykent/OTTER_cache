@@ -106,6 +106,27 @@ module cache_tb ();
         else success = (test_data_o == $signed(test_data_i)) ? 1 : 0;
         @(posedge MEM_CLK);
     endtask : test_pair_rand
+        
+        
+    
+    task test_write_hit(output success);
+        logic [31:0] test_data_i;
+        logic [31:0] test_data_o; 
+        logic [31:0] test_addr;
+        
+        test_data_i = $urandom();
+        test_addr = $urandom_range(32'h0, 32'hFFFF) & ~32'h3; // Get random Word aligned address
+        
+        store(test_addr, 32'hFFFFFFFF, 2);
+        @(posedge MEM_CLK);
+        store(test_addr, test_data_i, 2);
+        @(posedge MEM_CLK);
+        load(test_addr, 1, 2, test_data_o);
+        @(posedge MEM_CLK);
+        
+        success = (test_data_o == test_data_i) ? 1 : 0;
+    
+    endtask : test_write_hit
 
     // Task to test MEM Read misses
     task test_read_miss(output success);
@@ -208,6 +229,16 @@ module cache_tb ();
             test_read_miss(suc);
             if (~suc) begin
                 $display("ERROR TESTING READ MISSES %d", i);
+                $finish;
+            end
+        end
+        
+        //Test Write Hits
+         $display("[%t]: TESTING WRITE HITS", $realtime());
+        for (int i = 0; i < 10; i++) begin
+            test_write_hit(suc);
+            if (~suc) begin
+                $display("ERROR TESTING WRITE HITS %d", i);
                 $finish;
             end
         end
