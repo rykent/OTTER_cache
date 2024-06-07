@@ -43,7 +43,7 @@
 
 module SinglePortDelayMemory #(
     parameter DELAY_CYCLES = 10,
-    parameter BURST_LEN = 4
+    parameter BURST_LEN = 8
     ) (
     input CLK,
     input RE,

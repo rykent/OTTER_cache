@@ -19,6 +19,7 @@ module cache (
 	output hit,
 	output lru_dirty,
 	output lru_valid,
+	output [23:0] lru_tag,
 	output logic [31:0] data_out,
 	output logic [255:0] cacheline_out
 );
@@ -55,6 +56,7 @@ module cache (
 
 	assign lru_dirty = c_dirty[index][lru[index]];
 	assign lru_valid = c_valid[index][lru[index]];
+	assign lru_tag = c_tag[index][lru[index]];
 
 	assign w1_hit = ((c_tag[index][0] == i_tag) & c_valid[index][0]);
 	assign w2_hit = ((c_tag[index][1] == i_tag) & c_valid[index][1]);

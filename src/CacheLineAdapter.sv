@@ -32,13 +32,14 @@ module CacheLineAdapter (
     input CLK,
     input RST,
     input [31:0] addr,
+    input [23:0] lru_tag,
     input [255:0] c_data_i,
     input [31:0] m_data_o,
     input cl_read,
     input cl_write,
     input m_o_valid,
     output logic [31:0] m_data_i,
-    output [31:0] m_waddr,
+    output logic [31:0] m_waddr,
     output logic mem_we,
     output logic mem_re,
     output [255:0] c_data_o,
@@ -51,9 +52,16 @@ module CacheLineAdapter (
     
     logic fifo_we, fifo_re, fifo_s;
 
-    assign m_data_i = data_fifo[31:0];
-    assign m_waddr = addr + (count << 2);
+    assign m_data_i = data_fifo[255:224];
     assign c_data_o = data_fifo;
+
+    always_ff @(posedge CLK) begin : MADDR_
+        if(RST) begin
+            m_waddr <= 0;
+        end else if (cl_write) m_waddr <= {lru_tag, addr[7:5], 5'b11111};
+        else if (cl_read) m_waddr <= {addr[31:5], 5'b11111};
+        else if (m_o_valid) m_waddr <= {m_waddr[31:5], (count << 2)};
+    end
 
     //Counter to verify all word have been read or written to memory
     always_ff @(posedge CLK) begin : COUNTER_
@@ -104,7 +112,7 @@ module CacheLineAdapter (
             WRITE: begin
                 cl_busy = 1'b1;
                 mem_we = 1'b1;
-                fifo_re = 1'b1;
+                fifo_re = m_o_valid;
                 if (count > 0) ns = WRITE;
                 else ns = IDLE;
             end

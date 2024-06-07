@@ -72,6 +72,8 @@ module OtterMemory (
 
     logic [255:0] d_cacheline_in, d_cacheline_out;
 
+    logic [23:0] d_lru_tag;
+
     logic [31:0] d_mem_to_cache_data, d_cache_to_mem_data, d_mem_addr;
 
     logic [31:0] dcacheReadSized, memAddr2Buffer, ioBuffer;
@@ -98,6 +100,7 @@ module OtterMemory (
         .cl_busy  (d_cl_busy),
         .cl_write (d_cl_write),
         .cl_read  (d_cl_read),
+        .lru_tag  (d_lru_tag),
         .addr     (MEM_ADDR2),
         .m_data_o (d_mem_to_cache_data),
         .c_data_i (d_cacheline_out),
@@ -157,6 +160,7 @@ module OtterMemory (
         .mem_size        (MEM_SIZE),
         .mem_sign        (MEM_SIGN),
         .lru_dirty       (d_lru_dirty),
+        .lru_tag         (d_lru_tag),
         .set_dirty       (d_set_dirty),
         .set_valid       (d_set_valid),
         .update_tag      (d_update_tag),

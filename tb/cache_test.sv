@@ -108,15 +108,40 @@ module cache_tb ();
     endtask : test_pair_rand
 
     // Task to test MEM Read misses
-    task test_read_miss();
-        logic [31:0] test_data_orig;
-        logic [31:0] orig_addr;
+    task test_read_miss(output success);
+        logic [31:0] test_data_orig1;
+        logic [31:0] test_data_orig2;
+
+        logic [31:0] orig_addr1;
+        logic [31:0] orig_addr2;
+        logic [31:0] miss_addr;
+
         logic [31:0] test_data_out;
+        logic [2:0] index;
 
-        test_data_orig = $urandom();
-        orig_addr = $urandom_range(32'h0, 32'hFFFF) & ~32'h3;
+        test_data_orig1 = $urandom();
+        test_data_orig2 = $urandom();
 
-        store()
+
+        orig_addr1 = $urandom_range(32'h0, 32'hFFFF) & ~32'h3;
+        index = orig_addr1[7:5];
+
+        orig_addr2 = $urandom_range(32'h0, 32'hFFFF) & ~32'h3 | {24'b0, index, 5'b0};
+        miss_addr = $urandom_range(32'h0, 32'hFFFF) & ~32'h3 | {24'b0, index, 5'b0};
+
+        store(orig_addr1, test_data_orig1, 2); //Fill Both Ways
+        @(posedge MEM_CLK);
+        store(orig_addr2, test_data_orig2, 2);
+        @(posedge MEM_CLK);
+        store(miss_addr, 32'hFFFFFFFF, 2);  //This should overwrite way1, and cause a writeback
+        @(posedge MEM_CLK);
+        load(orig_addr1, 1, 2, test_data_out);
+
+
+        if (test_data_out == test_data_orig1) success = 1;
+        else success = 0;
+
+        @(posedge MEM_CLK);
 
     endtask : test_read_miss
 
@@ -131,7 +156,7 @@ module cache_tb ();
 
         //Test random Numbers Store/Load Pairs
 
-        $display("TESTING WORDS");
+        $display("[%t]: TESTING WORDS", $realtime());
         for (int i = 0; i < 100; i++) begin
             test_pair_rand(2, 1, suc);
             if (~suc) begin
@@ -140,7 +165,7 @@ module cache_tb ();
             end
         end
 
-        $display("TESTING UNSIGNED HALFS");
+        $display("[%t]: TESTING UNSIGNED HALFS", $realtime());
         for (int i = 0; i < 100; i++) begin
             test_pair_rand(1, 1, suc);
             if (~suc) begin
@@ -149,7 +174,7 @@ module cache_tb ();
             end
         end
 
-        $display("TESTING SIGNED HALFS");
+        $display("[%t]: TESTING SIGNED HALFS", $realtime());
         for (int i = 0; i < 100; i++) begin
             test_pair_rand(1, 0, suc);
             if (~suc) begin
@@ -158,7 +183,7 @@ module cache_tb ();
             end
         end
 
-        $display("TESTING UNSIGNED BYTES");
+        $display("[%t]: TESTING UNSIGNED BYTES", $realtime());
         for (int i = 0; i < 100; i++) begin
             test_pair_rand(0, 1, suc);
             if (~suc) begin
@@ -167,7 +192,7 @@ module cache_tb ();
             end
         end
 
-        $display("TESTING SIGNED BYTES");
+        $display("[%t]: TESTING SIGNED BYTES", $realtime());
         for (int i = 0; i < 100; i++) begin
             test_pair_rand(0, 0, suc);
             if (~suc) begin
@@ -176,9 +201,20 @@ module cache_tb ();
             end
         end
 
+        //Test for Read Misses by filling both ways then causing a writeback
+
+        $display("[%t]: TESTING READ MISSES", $realtime());
+        for (int i = 0; i < 10; i++) begin
+            test_read_miss(suc);
+            if (~suc) begin
+                $display("ERROR TESTING READ MISSES %d", i);
+                $finish;
+            end
+        end
+
 
         $display("ALL TESTS PASSED, WOOOOOOO!!!!");
-            
+        $finish;
     end
 
 	OtterMemory DUT (.*);
